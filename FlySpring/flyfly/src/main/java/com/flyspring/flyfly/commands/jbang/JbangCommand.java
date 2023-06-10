@@ -105,6 +105,10 @@ public class JbangCommand implements Runnable {
     String platformName = System.getProperty("os.name");
     if (platformName.contains("Windows")) {
       platformName = "Windows";
+    } else {
+      // All other platforms are assumed to be following the Linux conventions,
+      // including Mac.
+      platformName = "Linux";
     }
     // final String pattern = "-classpath '";
     final String pattern = cpPatternMap.get(platformName);

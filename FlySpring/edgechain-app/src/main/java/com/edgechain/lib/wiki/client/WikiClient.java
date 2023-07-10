@@ -1,12 +1,15 @@
 package com.edgechain.lib.wiki.client;
 
-import com.edgechain.lib.rxjava.response.ChainResponse;
+import com.edgechain.lib.endpoint.Endpoint;
 import com.edgechain.lib.rxjava.transformer.observable.EdgeChain;
+import com.edgechain.lib.wiki.response.WikiResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.rxjava3.core.Observable;
 import java.util.Collections;
 import java.util.Objects;
+
+import me.xuender.unidecode.Unidecode;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -16,7 +19,13 @@ public class WikiClient {
 
   private static final String WIKIPEDIA_API_URL = "https://en.wikipedia.org/w/api.php";
 
-  public EdgeChain<ChainResponse> getPageContent(String pageTitle) {
+  private final Endpoint endpoint;
+
+  public WikiClient(Endpoint endpoint) {
+    this.endpoint = endpoint;
+  }
+
+  public EdgeChain<WikiResponse> getPageContent(String input) {
     return new EdgeChain<>(
         Observable.create(
             emitter -> {
@@ -30,7 +39,7 @@ public class WikiClient {
                 formParams.add("action", "query");
                 formParams.add("prop", "extracts");
                 formParams.add("format", "json");
-                formParams.add("titles", pageTitle);
+                formParams.add("titles", input);
                 formParams.add("explaintext", ""); // Add this line to request plain text content
 
                 HttpEntity<MultiValueMap<String, String>> requestEntity =
@@ -43,24 +52,30 @@ public class WikiClient {
                 String jsonResponse = response.getBody();
 
                 JsonNode rootNode = new ObjectMapper().readTree(jsonResponse);
+
                 JsonNode pagesNode = rootNode.path("query").path("pages");
 
                 // Iterate through the pages and extract the first page's content
                 String output = null;
+                String regex = "[^\\p{L}\\p{N}\\p{P}\\p{Z}]";
                 for (JsonNode pageNode : pagesNode) {
                   if (pageNode.has("extract")) {
-                    output = pageNode.get("extract").asText();
+                    output =
+                        Unidecode.decode(pageNode.get("extract").asText())
+                            .replaceAll("[\t\n\r]+", " ");
+                    output = output.replaceAll(regex, "");
                   }
                 }
 
-                if (Objects.isNull(output)) throw new RuntimeException("No wiki content found..");
+                if (Objects.isNull(output)) output = "";
 
-                emitter.onNext(new ChainResponse(output));
+                emitter.onNext(new WikiResponse(output));
                 emitter.onComplete();
 
               } catch (final Exception e) {
                 emitter.onError(e);
               }
-            }));
+            }),
+        endpoint);
   }
 }

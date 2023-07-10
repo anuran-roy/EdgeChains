@@ -1,36 +1,44 @@
 package com.edgechain.service.controllers.index;
 
-import com.edgechain.lib.constants.WebConstants;
-import com.edgechain.lib.index.providers.redis.RedisQueryProvider;
-import com.edgechain.lib.index.providers.redis.RedisUpsertProvider;
-import com.edgechain.lib.request.RedisRequest;
-import com.edgechain.lib.rxjava.provider.ChainProvider;
-import com.edgechain.lib.rxjava.request.ChainRequest;
-import com.edgechain.lib.rxjava.response.ChainResponse;
-import com.edgechain.lib.rxjava.wrapper.ChainWrapper;
+import com.edgechain.lib.embeddings.WordEmbeddings;
+import com.edgechain.lib.index.request.feign.RedisRequest;
+import com.edgechain.lib.index.client.impl.RedisClient;
+import com.edgechain.lib.response.StringResponse;
+import com.edgechain.lib.rxjava.transformer.observable.EdgeChain;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController("Service RedisController")
-@RequestMapping(value = WebConstants.SERVICE_CONTEXT_PATH + "/index/redis")
+@RequestMapping(value = "/v2/index/redis")
 public class RedisController {
 
   @PostMapping("/upsert")
-  public Single<ChainResponse> upsert(@RequestBody RedisRequest request) {
-    ChainProvider redisUpsert = new RedisUpsertProvider();
+  public Single<StringResponse> upsert(@RequestBody RedisRequest request) {
 
-    ChainWrapper wrapper = new ChainWrapper();
-    return wrapper.chains(new ChainRequest(request.getInput()), redisUpsert).toSingleWithRetry();
+    EdgeChain<StringResponse> edgeChain =
+        new RedisClient(request.getEndpoint(), request.getIndexName(), request.getNamespace())
+            .upsert(request.getWordEmbeddings(), request.getDimensions(), request.getMetric());
+
+    return edgeChain.toSingle();
   }
 
   @PostMapping("/query")
-  public Single<ChainResponse> query(@RequestBody RedisRequest request) {
-    ChainProvider redisQuery = new RedisQueryProvider(request.getTopK());
+  public Single<List<WordEmbeddings>> query(@RequestBody RedisRequest request) {
 
-    ChainWrapper wrapper = new ChainWrapper();
-    return wrapper.chains(new ChainRequest(request.getInput()), redisQuery).toSingleWithRetry();
+    EdgeChain<List<WordEmbeddings>> edgeChain =
+        new RedisClient(request.getEndpoint(), request.getIndexName(), request.getNamespace())
+            .query(request.getWordEmbeddings(), request.getTopK());
+
+    return edgeChain.toSingle();
+  }
+
+  @DeleteMapping("/delete")
+  public Completable deleteByPattern(
+      @RequestParam("pattern") String pattern, @RequestBody RedisRequest request) {
+    EdgeChain<String> edgeChain = new RedisClient(request.getEndpoint()).deleteByPattern(pattern);
+    return edgeChain.await();
   }
 }

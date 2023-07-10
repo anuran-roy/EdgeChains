@@ -1,9 +1,9 @@
 package com.edgechain.lib.openai.client;
 
-import com.edgechain.lib.constants.WebConstants;
-import com.edgechain.lib.embeddings.domain.openai.OpenAiEmbeddingRequest;
-import com.edgechain.lib.embeddings.domain.openai.OpenAiEmbeddingResponse;
-import com.edgechain.lib.openai.endpoint.Endpoint;
+import com.edgechain.lib.constants.EndpointConstants;
+import com.edgechain.lib.embeddings.request.OpenAiEmbeddingRequest;
+import com.edgechain.lib.embeddings.response.OpenAiEmbeddingResponse;
+import com.edgechain.lib.endpoint.impl.OpenAiEndpoint;
 import com.edgechain.lib.openai.request.ChatCompletionRequest;
 import com.edgechain.lib.openai.request.CompletionRequest;
 import com.edgechain.lib.openai.response.ChatCompletionResponse;
@@ -11,28 +11,34 @@ import com.edgechain.lib.openai.response.CompletionResponse;
 import com.edgechain.lib.rxjava.transformer.observable.EdgeChain;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.rxjava3.core.Observable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
-import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.adapter.rxjava.RxJava3Adapter;
 
 import java.util.Objects;
 
-@Service
 public class OpenAiClient {
 
+  private final Logger logger = LoggerFactory.getLogger(getClass());
   private final RestTemplate restTemplate = new RestTemplate();
 
-  public EdgeChain<ChatCompletionResponse> createChatCompletion(
-      Endpoint endpoint, ChatCompletionRequest request) {
+  private final OpenAiEndpoint endpoint;
+
+  public OpenAiClient(OpenAiEndpoint endpoint) {
+    this.endpoint = endpoint;
+  }
+
+  public EdgeChain<ChatCompletionResponse> createChatCompletion(ChatCompletionRequest request) {
 
     return new EdgeChain<>(
         Observable.create(
             emitter -> {
               try {
 
-                System.out.println("Logging....");
+                logger.info("Logging ChatCompletion....");
 
                 // Create headers
                 HttpHeaders headers = new HttpHeaders();
@@ -41,7 +47,7 @@ public class OpenAiClient {
 
                 HttpEntity<ChatCompletionRequest> entity = new HttpEntity<>(request, headers);
 
-                System.out.println(entity.getBody());
+                logger.info(String.valueOf(entity.getBody()));
 
                 // Send the POST request
                 ResponseEntity<ChatCompletionResponse> response =
@@ -59,7 +65,7 @@ public class OpenAiClient {
   }
 
   public EdgeChain<ChatCompletionResponse> createChatCompletionStream(
-      Endpoint endpoint, ChatCompletionRequest request) {
+      ChatCompletionRequest request) {
 
     try {
       return new EdgeChain<>(
@@ -67,12 +73,12 @@ public class OpenAiClient {
               WebClient.builder()
                   .build()
                   .post()
-                  .uri(WebConstants.OPENAI_CHAT_COMPLETION_API)
+                  .uri(EndpointConstants.OPENAI_CHAT_COMPLETION_API)
                   .accept(MediaType.TEXT_EVENT_STREAM)
                   .headers(
                       httpHeaders -> {
                         httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-                        httpHeaders.setBearerAuth(WebConstants.OPENAI_AUTH_KEY);
+                        httpHeaders.setBearerAuth(endpoint.getApiKey());
                       })
                   .bodyValue(new ObjectMapper().writeValueAsString(request))
                   .retrieve()
@@ -83,8 +89,7 @@ public class OpenAiClient {
     }
   }
 
-  public EdgeChain<CompletionResponse> createCompletion(
-      Endpoint endpoint, CompletionRequest request) {
+  public EdgeChain<CompletionResponse> createCompletion(CompletionRequest request) {
     return new EdgeChain<>(
         Observable.create(
             emitter -> {
@@ -108,8 +113,7 @@ public class OpenAiClient {
         endpoint);
   }
 
-  public EdgeChain<OpenAiEmbeddingResponse> createEmbeddings(
-      Endpoint endpoint, OpenAiEmbeddingRequest request) {
+  public EdgeChain<OpenAiEmbeddingResponse> createEmbeddings(OpenAiEmbeddingRequest request) {
     return new EdgeChain<>(
         Observable.create(
             emitter -> {

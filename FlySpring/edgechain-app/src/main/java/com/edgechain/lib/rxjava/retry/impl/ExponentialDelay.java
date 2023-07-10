@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit;
 public class ExponentialDelay extends RetryPolicy {
 
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
-  private long firstDelay = 3;
-  private int maxRetries = 4;
-  private int factor = 2;
+  private long firstDelay;
+  private int maxRetries;
+  private int factor;
   private TimeUnit unit = TimeUnit.SECONDS;
   private int retryCount;
 
@@ -21,9 +21,10 @@ public class ExponentialDelay extends RetryPolicy {
 
   public ExponentialDelay(long firstDelay, int maxRetries, int factor, TimeUnit unit) {
     this.firstDelay = firstDelay;
-    this.maxRetries = maxRetries;
+    this.maxRetries = maxRetries + 1;
     this.factor = factor;
     this.unit = unit;
+    this.retryCount = 0;
   }
 
   @Override

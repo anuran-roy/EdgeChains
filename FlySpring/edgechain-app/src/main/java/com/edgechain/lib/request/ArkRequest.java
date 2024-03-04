@@ -4,19 +4,23 @@ import com.edgechain.lib.request.exception.InvalidArkRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class ArkRequest {
 
   private final HttpServletRequest request;
+
+  private static final Logger logger = LoggerFactory.getLogger(ArkRequest.class);
 
   public ArkRequest() {
     this.request =
@@ -26,7 +30,20 @@ public class ArkRequest {
 
     String contentType = request.getContentType();
 
-    if (!contentType.contains("application/json") && !contentType.contains("multipart/form-data")) {
+    if (Objects.isNull(contentType)) {
+      logger.error(
+          "ArkRequest can only accept Content-Type:application/json ||"
+              + " Content-Type:multipart/form-data - You haven't specified Content-Type");
+
+      throw new InvalidArkRequest(
+          "ArkRequest can only accept Content-Type:application/json ||"
+              + " Content-Type:multipart/form-data - You haven't specified Content-Type");
+    } else if (!contentType.contains("application/json")
+        && !contentType.contains("multipart/form-data")) {
+      logger.error(
+          "ArkRequest can only accept Content-Type:application/json ||"
+              + " Content-Type:multipart/form-data");
+
       throw new InvalidArkRequest(
           "ArkRequest can only accept Content-Type:application/json ||"
               + " Content-Type:multipart/form-data");
@@ -82,8 +99,15 @@ public class ArkRequest {
   }
 
   public JSONObject getBody() {
-    try {
-      return new JSONObject(this.request.getReader().lines().collect(Collectors.joining()));
+
+    StringBuilder jsonContent = new StringBuilder();
+
+    try (BufferedReader reader = request.getReader()) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        jsonContent.append(line);
+      }
+      return new JSONObject(jsonContent.toString());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

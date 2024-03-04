@@ -1,6 +1,6 @@
 package com.edgechain.openai;
 
-import com.edgechain.lib.endpoint.impl.OpenAiEndpoint;
+import com.edgechain.lib.endpoint.impl.llm.OpenAiChatEndpoint;
 import com.edgechain.lib.openai.request.ChatCompletionRequest;
 import com.edgechain.lib.openai.request.ChatMessage;
 import com.edgechain.lib.openai.response.ChatCompletionResponse;
@@ -30,13 +30,13 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class OpenAiClientTest {
 
-  @LocalServerPort int randomServerPort;
+  @LocalServerPort private int port;
 
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   @BeforeEach
   public void setup() {
-    System.setProperty("server.port", "" + randomServerPort);
+    System.setProperty("server.port", "" + port);
   }
 
   @ParameterizedTest
@@ -88,15 +88,15 @@ public class OpenAiClientTest {
   }
 
   @Test
-  @DisplayName("Test OpenAiEndpoint With Retry Mechanism")
+  @DisplayName("Test OpenAiChatEndpoint With Retry Mechanism")
   @Order(3)
   public void testOpenAiClient_WithRetryMechanism_ShouldThrowExceptionWithRetry(TestInfo testInfo)
       throws InterruptedException {
 
     System.out.println("======== " + testInfo.getDisplayName() + " ========");
 
-    OpenAiEndpoint endpoint =
-        new OpenAiEndpoint(
+    OpenAiChatEndpoint endpoint =
+        new OpenAiChatEndpoint(
             OPENAI_CHAT_COMPLETION_API,
             "", // apiKey
             "", // orgId
@@ -107,7 +107,10 @@ public class OpenAiClientTest {
             new ExponentialDelay(3, 3, 2, TimeUnit.SECONDS));
 
     TestObserver<ChatCompletionResponse> test =
-        endpoint.getChatCompletion("Can you write two unique sentences on Java Language?").test();
+        endpoint
+            .chatCompletion(
+                "Can you write two unique sentences on Java Language?", "TestChain", null)
+            .test();
 
     // Step 4: To act & assert
     test.await();
@@ -117,7 +120,7 @@ public class OpenAiClientTest {
   }
 
   @Test
-  @DisplayName("Test OpenAiEndpoint With No Retry Mechanism")
+  @DisplayName("Test OpenAiChatEndpoint With No Retry Mechanism")
   @Order(4)
   public void testOpenAiClient_WithNoRetryMechanism_ShouldThrowExceptionWithNoRetry(
       TestInfo testInfo) throws InterruptedException {
@@ -125,8 +128,8 @@ public class OpenAiClientTest {
     System.out.println("======== " + testInfo.getDisplayName() + " ========");
 
     // Step 1 : Create OpenAi Endpoint
-    OpenAiEndpoint endpoint =
-        new OpenAiEndpoint(
+    OpenAiChatEndpoint endpoint =
+        new OpenAiChatEndpoint(
             OPENAI_CHAT_COMPLETION_API,
             "", // apiKey
             "", // orgId
@@ -136,7 +139,10 @@ public class OpenAiClientTest {
             false);
 
     TestObserver<ChatCompletionResponse> test =
-        endpoint.getChatCompletion("Can you write two unique sentences on Java Language?").test();
+        endpoint
+            .chatCompletion(
+                "Can you write two unique sentences on Java Language?", "TestChain", null)
+            .test();
 
     // Step 4: To act & assert
     test.await();

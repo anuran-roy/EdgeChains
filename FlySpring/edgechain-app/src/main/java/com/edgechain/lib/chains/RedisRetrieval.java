@@ -1,75 +1,87 @@
 package com.edgechain.lib.chains;
 
-import com.edgechain.lib.endpoint.impl.Doc2VecEndpoint;
-import com.edgechain.lib.endpoint.impl.OpenAiEndpoint;
-import com.edgechain.lib.endpoint.impl.RedisEndpoint;
+import com.edgechain.lib.embeddings.WordEmbeddings;
+import com.edgechain.lib.endpoint.impl.embeddings.BgeSmallEndpoint;
+import com.edgechain.lib.endpoint.impl.embeddings.MiniLMEndpoint;
+import com.edgechain.lib.endpoint.impl.embeddings.OpenAiEmbeddingEndpoint;
+import com.edgechain.lib.endpoint.impl.index.RedisEndpoint;
 import com.edgechain.lib.index.enums.RedisDistanceMetric;
-import com.edgechain.lib.rxjava.transformer.observable.EdgeChain;
+import com.edgechain.lib.request.ArkRequest;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Objects;
+import java.util.List;
 
-public class RedisRetrieval extends Retrieval {
-
-  private final Logger logger = LoggerFactory.getLogger(getClass());
-
+public class RedisRetrieval {
   private final RedisEndpoint redisEndpoint;
-  private OpenAiEndpoint openAiEndpoint;
-
-  private Doc2VecEndpoint doc2VecEndpoint;
-
+  private final ArkRequest arkRequest;
+  private final String[] arr;
   private final int dimension;
   private final RedisDistanceMetric metric;
+  private int batchSize = 30;
 
   public RedisRetrieval(
+      String[] arr,
       RedisEndpoint redisEndpoint,
-      OpenAiEndpoint openAiEndpoint,
       int dimension,
-      RedisDistanceMetric metric) {
+      RedisDistanceMetric metric,
+      ArkRequest arkRequest) {
     this.redisEndpoint = redisEndpoint;
-    this.openAiEndpoint = openAiEndpoint;
     this.dimension = dimension;
     this.metric = metric;
-    logger.info("Using OpenAI Embedding Service");
+    this.arkRequest = arkRequest;
+    this.arr = arr;
+
+    Logger logger = LoggerFactory.getLogger(getClass());
+    if (redisEndpoint.getEmbeddingEndpoint() instanceof OpenAiEmbeddingEndpoint openAiEndpoint)
+      logger.info("Using OpenAi Embedding Service: " + openAiEndpoint.getModel());
+    else if (redisEndpoint.getEmbeddingEndpoint() instanceof MiniLMEndpoint miniLMEndpoint)
+      logger.info(String.format("Using %s", miniLMEndpoint.getMiniLMModel().getName()));
+    else if (redisEndpoint.getEmbeddingEndpoint() instanceof BgeSmallEndpoint bgeSmallEndpoint)
+      logger.info(String.format("Using BgeSmall: " + bgeSmallEndpoint.getModelUrl()));
   }
 
-  public RedisRetrieval(
-      RedisEndpoint redisEndpoint,
-      Doc2VecEndpoint doc2VecEndpoint,
-      int dimension,
-      RedisDistanceMetric metric) {
-    this.redisEndpoint = redisEndpoint;
-    this.doc2VecEndpoint = doc2VecEndpoint;
-    this.dimension = dimension;
-    this.metric = metric;
-    logger.info("Using Doc2Vec Embedding Service");
+  public void upsert() {
+
+    this.redisEndpoint.createIndex(redisEndpoint.getNamespace(), dimension, metric);
+
+    Observable.fromArray(arr)
+        .buffer(batchSize)
+        .concatMapCompletable(
+            batch ->
+                Observable.fromIterable(batch)
+                    .flatMap(
+                        input ->
+                            Observable.fromCallable(() -> generateEmbeddings(input))
+                                .subscribeOn(Schedulers.io()))
+                    .toList()
+                    .flatMapCompletable(
+                        wordEmbeddingsList ->
+                            Completable.fromAction(() -> executeBatchUpsert(wordEmbeddingsList))
+                                .subscribeOn(Schedulers.io())))
+        .blockingAwait();
   }
 
-  @Override
-  public void upsert(String input) {
+  private WordEmbeddings generateEmbeddings(String input) {
+    return redisEndpoint
+        .getEmbeddingEndpoint()
+        .embeddings(input, arkRequest)
+        .firstOrError()
+        .blockingGet();
+  }
 
-    if (Objects.nonNull(openAiEndpoint)) {
-      new EdgeChain<>(
-              this.openAiEndpoint
-                  .getEmbeddings(input)
-                  .map(embeddings -> this.redisEndpoint.upsert(embeddings, dimension, metric))
-                  .firstOrError()
-                  .blockingGet())
-          .await()
-          .blockingAwait();
-    }
-    // For Doc2Vec ===>
+  private void executeBatchUpsert(List<WordEmbeddings> wordEmbeddingsList) {
+    redisEndpoint.batchUpsert(wordEmbeddingsList);
+  }
 
-    if (Objects.nonNull(doc2VecEndpoint)) {
-      new EdgeChain<>(
-              this.doc2VecEndpoint
-                  .getEmbeddings(input)
-                  .map(embeddings -> this.redisEndpoint.upsert(embeddings, dimension, metric))
-                  .firstOrError()
-                  .blockingGet())
-          .await()
-          .blockingAwait();
-    }
+  public void setBatchSize(int batchSize) {
+    this.batchSize = batchSize;
+  }
+
+  public int getBatchSize() {
+    return batchSize;
   }
 }

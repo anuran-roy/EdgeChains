@@ -1,6 +1,7 @@
 package com.edgechain.service.controllers.wiki;
 
-import com.edgechain.lib.endpoint.impl.WikiEndpoint;
+import com.edgechain.lib.configuration.WebConfiguration;
+import com.edgechain.lib.endpoint.impl.wiki.WikiEndpoint;
 import com.edgechain.lib.rxjava.transformer.observable.EdgeChain;
 import com.edgechain.lib.wiki.client.WikiClient;
 import com.edgechain.lib.wiki.response.WikiResponse;
@@ -9,7 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 @RestController("Service WikiController")
-@RequestMapping(value = "/v2/wiki")
+@RequestMapping(value = WebConfiguration.CONTEXT_PATH + "/wiki")
 public class WikiController {
 
   @PostMapping(

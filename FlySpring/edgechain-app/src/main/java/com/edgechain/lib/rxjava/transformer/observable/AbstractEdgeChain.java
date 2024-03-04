@@ -1,9 +1,20 @@
 package com.edgechain.lib.rxjava.transformer.observable;
 
 import com.edgechain.lib.rxjava.retry.RetryPolicy;
-import io.reactivex.rxjava3.core.*;
-import io.reactivex.rxjava3.functions.*;
-
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Notification;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.ObservableSource;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.functions.Action;
+import io.reactivex.rxjava3.functions.BiFunction;
+import io.reactivex.rxjava3.functions.BooleanSupplier;
+import io.reactivex.rxjava3.functions.Consumer;
+import io.reactivex.rxjava3.functions.Function;
+import io.reactivex.rxjava3.functions.Predicate;
 import java.io.Serializable;
 
 public abstract class AbstractEdgeChain<T> implements Serializable {
@@ -12,7 +23,7 @@ public abstract class AbstractEdgeChain<T> implements Serializable {
 
   protected Observable<T> observable;
 
-  public AbstractEdgeChain(Observable<T> observable) {
+  protected AbstractEdgeChain(Observable<T> observable) {
     this.observable = observable;
   }
 
@@ -29,11 +40,20 @@ public abstract class AbstractEdgeChain<T> implements Serializable {
 
   public abstract AbstractEdgeChain<T> concatWith(ObservableSource<T> other);
 
+  // doOnEach, doOnSubscribe(), doOnComplete(),
+
   public abstract AbstractEdgeChain<T> doOnComplete(Action onComplete);
 
   public abstract AbstractEdgeChain<T> doOnNext(Consumer<? super T> onNext);
 
+  public abstract AbstractEdgeChain<T> doOnEach(
+      @NonNull Consumer<? super Notification<T>> onNotification);
+
+  public abstract AbstractEdgeChain<T> doAfterNext(Consumer<? super T> onAfterNext);
+
   public abstract AbstractEdgeChain<T> doOnError(Consumer<? super Throwable> onError);
+
+  public abstract AbstractEdgeChain<T> doOnSubscribe(Consumer<? super Disposable> onSubscribe);
 
   public abstract AbstractEdgeChain<T> schedule();
 

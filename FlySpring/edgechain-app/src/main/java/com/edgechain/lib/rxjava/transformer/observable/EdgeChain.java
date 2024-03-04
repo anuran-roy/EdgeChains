@@ -2,10 +2,13 @@ package com.edgechain.lib.rxjava.transformer.observable;
 
 import com.edgechain.lib.endpoint.Endpoint;
 import com.edgechain.lib.response.ArkResponse;
+import com.edgechain.lib.response.ArkEmitter;
+import com.edgechain.lib.response.ArkObservable;
 import com.edgechain.lib.rxjava.retry.RetryPolicy;
 import com.edgechain.lib.utils.RetryUtils;
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.*;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.*;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
@@ -26,8 +29,8 @@ public class EdgeChain<T> extends AbstractEdgeChain<T> implements Serializable {
     this.endpoint = endpoint;
   }
 
-  public static <T> EdgeChain<T> fromObservable(Observable<T> observable) {
-    return new EdgeChain<>(observable);
+  public EdgeChain(T item) {
+    super(Observable.just(item));
   }
 
   @Override
@@ -41,7 +44,7 @@ public class EdgeChain<T> extends AbstractEdgeChain<T> implements Serializable {
   }
 
   @Override
-  public <R> AbstractEdgeChain<R> combine(EdgeChain<T> other, BiFunction<T, T, R> zipper) {
+  public <R> EdgeChain<R> combine(EdgeChain<T> other, BiFunction<T, T, R> zipper) {
     return new EdgeChain<>(this.observable.zipWith(other.getObservable(), zipper));
   }
 
@@ -61,18 +64,33 @@ public class EdgeChain<T> extends AbstractEdgeChain<T> implements Serializable {
   }
 
   @Override
-  public AbstractEdgeChain<T> doOnComplete(Action onComplete) {
-    return new EdgeChain<>(this.observable.doOnComplete(onComplete));
+  public EdgeChain<T> doOnComplete(Action onComplete) {
+    return new EdgeChain<>(this.observable.doOnComplete(onComplete), endpoint);
   }
 
   @Override
   public EdgeChain<T> doOnNext(@NonNull Consumer<? super T> onNext) {
-    return new EdgeChain<>(this.observable.doOnNext(onNext));
+    return new EdgeChain<>(this.observable.doOnNext(onNext), endpoint);
+  }
+
+  @Override
+  public EdgeChain<T> doOnEach(@NonNull Consumer<? super Notification<T>> onNotification) {
+    return new EdgeChain<>(this.observable.doOnEach(onNotification), endpoint);
+  }
+
+  @Override
+  public EdgeChain<T> doAfterNext(@NonNull Consumer<? super T> onAfterNext) {
+    return new EdgeChain<>(this.observable.doAfterNext(onAfterNext), endpoint);
   }
 
   @Override
   public EdgeChain<T> doOnError(@NonNull Consumer<? super Throwable> onError) {
-    return new EdgeChain<>(this.observable.doOnError(onError));
+    return new EdgeChain<>(this.observable.doOnError(onError), endpoint);
+  }
+
+  @Override
+  public EdgeChain<T> doOnSubscribe(Consumer<? super Disposable> onSubscribe) {
+    return new EdgeChain<>(this.observable.doOnSubscribe(onSubscribe), endpoint);
   }
 
   @Override
@@ -151,12 +169,20 @@ public class EdgeChain<T> extends AbstractEdgeChain<T> implements Serializable {
 
   @Override
   public Single<T> toSingle() {
+
     if (RetryUtils.available(endpoint))
       return this.observable
-          .retryWhen(endpoint.getRetryPolicy())
           .subscribeOn(Schedulers.io())
+          .retryWhen(endpoint.getRetryPolicy())
           .firstOrError();
     else return this.observable.subscribeOn(Schedulers.io()).firstOrError();
+  }
+
+  public Single<T> toSingleWithoutScheduler() {
+
+    if (RetryUtils.available(endpoint))
+      return this.observable.retryWhen(endpoint.getRetryPolicy()).firstOrError();
+    else return this.observable.firstOrError();
   }
 
   @Override
@@ -200,7 +226,11 @@ public class EdgeChain<T> extends AbstractEdgeChain<T> implements Serializable {
         .subscribe(onComplete, onError);
   }
 
-  public ArkResponse<T> getArkResponse() {
-    return new ArkResponse<>(this.observable.subscribeOn(Schedulers.io()));
+  public ArkResponse getArkResponse() {
+    return new ArkObservable<>(this.observable);
+  }
+
+  public ArkResponse getArkStreamResponse() {
+    return new ArkEmitter<>(this.observable);
   }
 }

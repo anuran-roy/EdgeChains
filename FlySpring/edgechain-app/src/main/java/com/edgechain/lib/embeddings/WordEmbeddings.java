@@ -1,14 +1,18 @@
 package com.edgechain.lib.embeddings;
 
+import com.edgechain.lib.response.ArkObject;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.Serializable;
 import java.util.List;
 
-public class WordEmbeddings implements Serializable {
+public class WordEmbeddings implements ArkObject, Serializable {
 
   private static final long serialVersionUID = 2210956496609994219L;
   private String id;
   private List<Float> values;
-  private String score;
+  private Double score;
 
   public WordEmbeddings() {}
 
@@ -22,13 +26,13 @@ public class WordEmbeddings implements Serializable {
     this.values = values;
   }
 
-  public WordEmbeddings(String id, List<Float> values, String score) {
+  public WordEmbeddings(String id, List<Float> values, Double score) {
     this.id = id;
     this.values = values;
     this.score = score;
   }
 
-  public WordEmbeddings(String id, String score) {
+  public WordEmbeddings(String id, Double score) {
     this.id = id;
     this.score = score;
   }
@@ -45,7 +49,7 @@ public class WordEmbeddings implements Serializable {
     this.values = values;
   }
 
-  public String getScore() {
+  public Double getScore() {
     return score;
   }
 
@@ -53,12 +57,46 @@ public class WordEmbeddings implements Serializable {
     this.id = id;
   }
 
-  public void setScore(String score) {
+  public void setScore(Double score) {
     this.score = score;
   }
 
   @Override
   public String toString() {
     return "Vector{" + "id='" + id + '\'' + ", values=" + values + ", score='" + score + '\'' + '}';
+  }
+
+  @Override
+  public JSONObject toJson() {
+    JSONObject json = new JSONObject();
+
+    if (id != null) {
+      json.put("id", id);
+    }
+
+    if (values != null) {
+      json.put("values", new JSONArray(values));
+    }
+
+    if (score != null) {
+      json.put("score", score);
+    }
+
+    return json;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    WordEmbeddings that = (WordEmbeddings) o;
+
+    return id.equals(that.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return id.hashCode();
   }
 }

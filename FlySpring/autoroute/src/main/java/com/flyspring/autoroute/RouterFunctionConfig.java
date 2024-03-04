@@ -103,16 +103,16 @@ public class RouterFunctionConfig {
       log.info("Endpoint:{}", prefix + endPoint);
       String path = endPoint + pathVariable;
       switch (apiType) {
-        case "GET" -> builder.GET(
-            path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
-        case "POST" -> builder.POST(
-            path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
-        case "PATCH" -> builder.PATCH(
-            path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
-        case "PUT" -> builder.PUT(
-            path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
-        case "DELETE" -> builder.DELETE(
-            path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
+        case "GET" ->
+            builder.GET(path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
+        case "POST" ->
+            builder.POST(path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
+        case "PATCH" ->
+            builder.PATCH(path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
+        case "PUT" ->
+            builder.PUT(path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
+        case "DELETE" ->
+            builder.DELETE(path, req -> invokeMethod(apiType, path, req, clazz, classMethod));
       }
     }
   }

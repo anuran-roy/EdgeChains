@@ -185,45 +185,48 @@ public class PostgresClientRepository {
       query.append("(").append("SELECT id, raw_text, embedding, namespace, filename, timestamp,");
 
       switch (metric) {
-        case COSINE -> query
-            .append(String.format("1 - (embedding <=> '%s') AS score ", embeddings))
-            .append(" FROM ")
-            .append(tableName)
-            .append(" WHERE namespace = ")
-            .append("'")
-            .append(namespace)
-            .append("'")
-            .append(" ORDER BY embedding <=> ")
-            .append("'")
-            .append(embeddings)
-            .append("'")
-            .append(" LIMIT ");
-        case IP -> query
-            .append(String.format("(embedding <#> '%s') * -1 AS score ", embeddings))
-            .append(" FROM ")
-            .append(tableName)
-            .append(" WHERE namespace = ")
-            .append("'")
-            .append(namespace)
-            .append("'")
-            .append(" ORDER BY embedding <#> ")
-            .append("'")
-            .append(embeddings)
-            .append("'")
-            .append(" LIMIT ");
-        case L2 -> query
-            .append(String.format("embedding <-> '%s' AS score ", embeddings))
-            .append(" FROM ")
-            .append(tableName)
-            .append(" WHERE namespace = ")
-            .append("'")
-            .append(namespace)
-            .append("'")
-            .append(" ORDER BY embedding <-> ")
-            .append("'")
-            .append(embeddings)
-            .append("'")
-            .append(" LIMIT ");
+        case COSINE ->
+            query
+                .append(String.format("1 - (embedding <=> '%s') AS score ", embeddings))
+                .append(" FROM ")
+                .append(tableName)
+                .append(" WHERE namespace = ")
+                .append("'")
+                .append(namespace)
+                .append("'")
+                .append(" ORDER BY embedding <=> ")
+                .append("'")
+                .append(embeddings)
+                .append("'")
+                .append(" LIMIT ");
+        case IP ->
+            query
+                .append(String.format("(embedding <#> '%s') * -1 AS score ", embeddings))
+                .append(" FROM ")
+                .append(tableName)
+                .append(" WHERE namespace = ")
+                .append("'")
+                .append(namespace)
+                .append("'")
+                .append(" ORDER BY embedding <#> ")
+                .append("'")
+                .append(embeddings)
+                .append("'")
+                .append(" LIMIT ");
+        case L2 ->
+            query
+                .append(String.format("embedding <-> '%s' AS score ", embeddings))
+                .append(" FROM ")
+                .append(tableName)
+                .append(" WHERE namespace = ")
+                .append("'")
+                .append(namespace)
+                .append("'")
+                .append(" ORDER BY embedding <-> ")
+                .append("'")
+                .append(embeddings)
+                .append("'")
+                .append(" LIMIT ");
         default -> throw new IllegalArgumentException("Invalid similarity measure: " + metric);
       }
       query.append(topK).append(")");
@@ -294,10 +297,10 @@ public class PostgresClientRepository {
                   language.getValue(), searchQuery));
 
       switch (metric) {
-        case COSINE -> query.append(
-            String.format("1 - (sv.embedding <=> '%s') AS similarity, ", embeddings));
-        case IP -> query.append(
-            String.format("(sv.embedding <#> '%s') * -1 AS similarity, ", embeddings));
+        case COSINE ->
+            query.append(String.format("1 - (sv.embedding <=> '%s') AS similarity, ", embeddings));
+        case IP ->
+            query.append(String.format("(sv.embedding <#> '%s') * -1 AS similarity, ", embeddings));
         case L2 -> query.append(String.format("sv.embedding <-> '%s' AS similarity, ", embeddings));
         default -> throw new IllegalArgumentException("Invalid similarity measure: " + metric);
       }
@@ -317,27 +320,30 @@ public class PostgresClientRepository {
                   tableName, namespace));
 
       switch (metric) {
-        case COSINE -> query
-            .append(" ORDER BY embedding <=> ")
-            .append("'")
-            .append(embeddings)
-            .append("'")
-            .append(" LIMIT ")
-            .append(topK);
-        case IP -> query
-            .append(" ORDER BY embedding <#> ")
-            .append("'")
-            .append(embeddings)
-            .append("'")
-            .append(" LIMIT ")
-            .append(topK);
-        case L2 -> query
-            .append(" ORDER BY embedding <-> ")
-            .append("'")
-            .append(embeddings)
-            .append("'")
-            .append(" LIMIT ")
-            .append(topK);
+        case COSINE ->
+            query
+                .append(" ORDER BY embedding <=> ")
+                .append("'")
+                .append(embeddings)
+                .append("'")
+                .append(" LIMIT ")
+                .append(topK);
+        case IP ->
+            query
+                .append(" ORDER BY embedding <#> ")
+                .append("'")
+                .append(embeddings)
+                .append("'")
+                .append(" LIMIT ")
+                .append(topK);
+        case L2 ->
+            query
+                .append(" ORDER BY embedding <-> ")
+                .append("'")
+                .append(embeddings)
+                .append("'")
+                .append(" LIMIT ")
+                .append(topK);
         default -> throw new IllegalArgumentException("Invalid metric: " + metric);
       }
       query
